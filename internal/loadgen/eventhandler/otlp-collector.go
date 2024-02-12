@@ -26,7 +26,11 @@ func (a *OTLPEventCollector) Filter(line []byte) error {
 
 // IsMeta identifies metadata lines from APM protocol.
 func (a *OTLPEventCollector) IsMeta(line []byte) bool {
-	return bytes.HasPrefix(line, metaHeader)
+	return false
+}
+
+func (a *OTLPEventCollector) UseMeta() bool {
+	return false
 }
 
 // Process processes single lines extracting APM events.

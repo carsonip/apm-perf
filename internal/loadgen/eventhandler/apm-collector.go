@@ -35,6 +35,10 @@ func (a *APMEventCollector) IsMeta(line []byte) bool {
 	return bytes.HasPrefix(line, metaHeader)
 }
 
+func (a *APMEventCollector) UseMeta() bool {
+	return true
+}
+
 // Process processes single lines extracting APM events.
 // It uniforms events timestamp.
 func (a *APMEventCollector) Process(linecopy []byte) event {

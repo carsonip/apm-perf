@@ -98,6 +98,7 @@ func NewEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 		// case "metrics":
 		// case "traces":
 		// }
+		return newOTLPEventHandler(p)
 
 		return nil, fmt.Errorf("invalid datatype (%s) for protocol (%s)", p.Datatype, p.Protocol)
 	}
@@ -131,4 +132,44 @@ func newAPMEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
 	}
 
 	return eventhandler.NewAPM(p.Logger, c)
+}
+
+func newOTLPEventHandler(p EventHandlerParams) (*eventhandler.Handler, error) {
+	// We call the HTTPTransport constructor to avoid copying all the config
+	// parsing that creates the `*http.Client`.
+	t, err := transport.NewHTTPTransport(transport.HTTPTransportOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("cannot create HTTP transport: %w", err)
+	}
+
+	var transport eventhandler.Transport
+	switch p.Datatype {
+	case "logs":
+		panic("not implemented")
+	case "metrics":
+		panic("not implemented")
+	case "traces":
+		transport = eventhandler.NewOTLPMetricsTransport(p.Logger, t.Client, p.URL, p.Token, p.APIKey, p.Headers)
+	default:
+		panic("unknown data type")
+	}
+
+	c := eventhandler.Config{
+		Path:                      filepath.Join("events", p.Path),
+		Transport:                 transport,
+		Storage:                   events,
+		Limiter:                   p.Limiter,
+		Rand:                      p.Rand,
+		IgnoreErrors:              p.IgnoreErrors,
+		RewriteIDs:                p.RewriteIDs,
+		RewriteServiceNames:       p.RewriteServiceNames,
+		RewriteServiceNodeNames:   p.RewriteServiceNodeNames,
+		RewriteServiceTargetNames: p.RewriteServiceTargetNames,
+		RewriteSpanNames:          p.RewriteSpanNames,
+		RewriteTransactionNames:   p.RewriteTransactionNames,
+		RewriteTransactionTypes:   p.RewriteTransactionTypes,
+		RewriteTimestamps:         p.RewriteTimestamps,
+	}
+
+	return eventhandler.NewOTLP(p.Logger, c)
 }

@@ -7,11 +7,13 @@ package eventhandler
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 )
 
 type OTLPTransport struct {
+	logger  *zap.Logger
 	client  *http.Client
 	headers http.Header
 	url     string
@@ -42,11 +44,11 @@ func (o *OTLPTransport) SendEvents(ctx context.Context, r io.Reader, ignoreErrs 
 	return nil
 }
 
-func newOTLPTransport(c *http.Client, srvURL, u, apiKey string, headers map[string]string) *OTLPTransport {
+func newOTLPTransport(logger *zap.Logger, c *http.Client, srvURL, u, token, apiKey string, headers map[string]string) *OTLPTransport {
 	h := make(http.Header)
 	h.Set("Content-Encoding", "deflate")
 	h.Set("Content-Type", "application/x-json")
-	h.Set("Authorization", "ApiKey "+apiKey)
+	h.Set("Authorization", getAuthHeader(token, apiKey))
 
 	for name, header := range headers {
 		h.Set(name, header)
@@ -56,6 +58,7 @@ func newOTLPTransport(c *http.Client, srvURL, u, apiKey string, headers map[stri
 		client:  c,
 		url:     srvURL + u,
 		headers: h,
+		logger:  logger,
 	}
 }
 
@@ -63,10 +66,15 @@ func NewOTLPLogsTransport() {
 	panic("not implemented")
 }
 
-func NewOTLPMetricsTransport(c *http.Client, srvURL, apiKey string, headers map[string]string) Transport {
-	return newOTLPTransport(c, srvURL, "/v1/metrics", apiKey, headers)
+func NewOTLPMetricsTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) Transport {
+	return newOTLPTransport(logger, c, srvURL, "/v1/metrics", token, apiKey, headers)
 }
 
-func NewOTLPTracesTransport(c *http.Client, srvURL, apiKey string, headers map[string]string) Transport {
-	return newOTLPTransport(c, srvURL, "/v1/traces", apiKey, headers)
+func NewOTLPTracesTransport(logger *zap.Logger, c *http.Client, srvURL, token, apiKey string, headers map[string]string) Transport {
+	return newOTLPTransport(logger, c, srvURL, "/v1/traces", token, apiKey, headers)
+}
+
+func NewOTLP(logger *zap.Logger, config Config) (*Handler, error) {
+	config.Writer = writeOTLPEvents
+	return New(logger, config, &OTLPEventCollector{})
 }

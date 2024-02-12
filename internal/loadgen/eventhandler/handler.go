@@ -204,6 +204,14 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 
 		s := bufio.NewScanner(f)
 		var current *batch
+
+		if !ec.UseMeta() {
+			h.batches = append(h.batches, batch{
+				metadata: nil,
+			})
+			current = &h.batches[len(h.batches)-1]
+		}
+
 		for s.Scan() {
 			line := s.Bytes()
 			if len(line) == 0 {
@@ -219,7 +227,7 @@ func New(logger *zap.Logger, config Config, ec EventCollector) (*Handler, error)
 			linecopy := make([]byte, len(line))
 			copy(linecopy, line)
 			// if the line is meta, create a new batch
-			if ec.IsMeta(line) {
+			if ec.UseMeta() && ec.IsMeta(line) {
 				h.batches = append(h.batches, batch{
 					metadata: linecopy,
 				})
